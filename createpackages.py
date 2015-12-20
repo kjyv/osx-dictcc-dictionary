@@ -4,7 +4,7 @@
 #  This is my first dive into Python. There is much room for improvement. :)
 #  Some parts are implemented in a rather ugly manner.
 #  Philipp Brauner  - lipflip.org
-#  Wolfgang Reszel - www.tekl.de 
+#  Wolfgang Reszel - www.tekl.de
 
 import sys, re, string, codecs, datetime, os, locale, urllib, argparse, cgi, locale
 
@@ -39,25 +39,24 @@ def main(argv):
     print("    Philipp M. Brauner -  lipflip.org")
     print("    licensed under the GLP")
     print("    http://lipflip.org/articles/dictcc-dictionary-plugin")
-    
+
     parser = argparse.ArgumentParser(description="dict.cc to Dictionary.app XML Converter")
-    
+
     parser.add_argument('-d', '--debug', action='store_true', dest='debug', default=False, help='Enables debug output')
     parser.add_argument('-x', '--subset', action='store_true', dest='generatesubset', default=False, help='Creates much smaller packages with a random subset of words')
     parser.add_argument('-e', '--encoding', action='store', dest='encoding', default='utf_8', help='Character encoding of input file (default UTF8)')
-    
+
     parser.add_argument('-v', '--version', action='store', dest='osxversion', default='10.5', help='required OS X version (packages for 10.6 are smaller) (default 10.5)')
 
     parser.add_argument('filename', type=str, action='store', default="DE-EN.txt", help='Language package to create (e.g. "DE-EN.txt")')
     parser.add_argument('shortname', type=str, action='store', default="DE-EN", help='Short name of language package to create (e.g. "DE-EN")')
     parser.add_argument('longname', type=str, action='store', default="Deutsch-Englisch by dict.cc", help='Long name of language package to create (e.g. "Deutsch-Englisch dict.cc")')
     parser.add_argument('-tempfile', type=str, action='store', default="dictionary.xml", help='Temporary file')
-    
+
     global arguments
     arguments = parser.parse_args()
-    
-    
-    # DE-IT -> dtit.dict.cc -> Will work for online lookups
+
+    # DE-IT -> deit.dict.cc -> Will work for online lookups
     if(string.upper(arguments.shortname)=="DE-EN"):
         arguments.urlprefix = ""
     else:
@@ -80,32 +79,30 @@ def main(argv):
         print "OSXVersion:", arguments.osxversion
 
     # enable printing of unicode strings without using .encode() millions of times
-    print("Switching sys.stdout to utf-16...")
-    sys.stdout = codecs.getwriter("utf-16")(sys.stdout);
+    print("Switching sys.stdout to utf-8...")
+    sys.stdout = codecs.getwriter("utf-8")(sys.stdout);
     print(" switched!")
 
     global checkVersionURL
     checkVersionURL = "http://lipflip.org/dictcc?date="+creationDate+"&lang="+arguments.shortname
 
-    
     readVocabulary(arguments.filename)
     generateXML(arguments.tempfile)
-    
+
     createPlist()
     createDictionary()
-    createPackage()
-    
-    
+    #createPackage()
+
 def createPackage():
     print("Creating installation package")
-    
+
 # todo
-#	@/Developer/Applications/Utilities/PackageMaker.app/Contents/MacOS/PackageMaker -d $(PMDOC_NAME) -o $(DICT_NAME)_$(DATE).pkg
-#	@echo "- Zipping Install Package."
-#	@zip $(DICT_NAME)_$(DATE).zip -9 -o $(DICT_NAME)_$(DATE).pkg 
-#	@echo "Done."
-#	@echo "Execute '$(DICT_NAME) $(DATE).pkg' to install the dictionary."
-	
+#       @/Developer/Applications/Utilities/PackageMaker.app/Contents/MacOS/PackageMaker -d $(PMDOC_NAME) -o $(DICT_NAME)_$(DATE).pkg
+#       @echo "- Zipping Install Package."
+#       @zip $(DICT_NAME)_$(DATE).zip -9 -o $(DICT_NAME)_$(DATE).pkg
+#       @echo "Done."
+#       @echo "Execute '$(DICT_NAME) $(DATE).pkg' to install the dictionary."
+
 
 def updateInPreferences():
     global statistics, arguments, checkVersionURL
@@ -115,14 +112,14 @@ def updateInPreferences():
     s = '<strong>' + arguments.longnameencoded + '</strong><br />'
     s += '<p>This dictionary is based on the vocabulary database from http://dict.cc/.<br />'
     s += 'It was generated on ' + datetime.date.today().strftime('%A, %B %d %Y') + ' and contains ' + str(thousandsseparator(statistics['entries'])) + ' entries.</p>'
-    
+
     s += '<p>The copyright for the vocabulary database is held by Paul Hemetsberger and the dict.cc community. Philipp Brauner (lipflip.org) converted the database into a format suitable for OS X and wrote a series of tools to do so. Parts of his work were inspired by Wolfgang Reszel (tekl.de) and his Beolingus plugin.</p>'
 
     # Primitive Update-Funktionalität
-    #  - link, der auf mini-update-seite springt 
+    #  - link, der auf mini-update-seite spring
 
     s += '<p><a href="' + checkUpdateURL + '">Click here to check for updates.</a></p>'
-    
+
     #  - Update image  (works, but currently not active due to privacy concerns
     # s += '<p><img src="'+checkUpdateImage+'" width="320" height="60" alt="Visual update indicator [loading...]" /></p>'
     s += '<p>For more information visit</p>'
@@ -130,34 +127,34 @@ def updateInPreferences():
 
     if(arguments.debug):
         print s
-    
+
     return s
 
 def createPlist():
     global arguments
     print("Creating plist")
-    
+
     output = codecs.open("dictcc.plist","w","utf-8")
     output.write(u'''<?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
-	<key>CFBundleDevelopmentRegion</key>
-	<string>German</string>
-	<key>CFBundleIdentifier</key>
-	<string>com.apple.dictionary.dictcc</string>
-	<key>CFBundleName</key>
-	<string>%s</string>
-	<key>CFBundleVersion</key>
-	<string>%s</string>
-	<key>CFBundleShortVersionString</key>
-	<string>%s</string>
-	<key>DCSDictionaryCopyright</key>
-	<string>%s</string>
-	<key>DCSDictionaryManufacturerName</key>
-	<string>Paul Hemetsberger, dict.cc / Philipp Brauner, lipflip.org / Wolfgang Reszel, www.tekl.de</string>
-	<key>DCSDictionaryFrontMatterReferenceID</key>
-	<string>front_back_matter</string>
+        <key>CFBundleDevelopmentRegion</key>
+        <string>German</string>
+        <key>CFBundleIdentifier</key>
+        <string>com.apple.dictionary.dictcc</string>
+        <key>CFBundleName</key>
+        <string>%s</string>
+        <key>CFBundleVersion</key>
+        <string>%s</string>
+        <key>CFBundleShortVersionString</key>
+        <string>%s</string>
+        <key>DCSDictionaryCopyright</key>
+        <string>%s</string>
+        <key>DCSDictionaryManufacturerName</key>
+        <string>Paul Hemetsberger, dict.cc / Philipp Brauner, lipflip.org / Wolfgang Reszel, www.tekl.de</string>
+        <key>DCSDictionaryFrontMatterReferenceID</key>
+        <string>front_back_matter</string>
 </dict>
 </plist>
 ''' % (arguments.shortname, str(datetime.date.today()), str(datetime.date.today()), '<![CDATA['+updateInPreferences()+']]>' ) )
@@ -169,10 +166,11 @@ def createDictionary():
     # -v 10.5 -> bigger packages
     # -v 10.6 -> smaller packages
     # arguments.osxversion
-    command = string.join(["/Developer/Extras/Dictionary\ Development\ Kit/bin/build_dict.sh", "-v 10.6", '"'+arguments.longname+'"', arguments.tempfile, "dictcc.css", "dictcc.plist"], " ")
+    command = string.join(["/Applications/Utilities/Dictionary\ Development\ Kit/bin/build_dict.sh",
+        "-v 10.6", '"'+arguments.longname+'"', arguments.tempfile, "dictcc.css", "dictcc.plist"], " ")
 #    print "% "+ command
     os.system(command)
-    
+
 #
 #   styles meta information of dictionary entries (e.g. "{colloq.}")
 def style(text):
@@ -186,42 +184,47 @@ def style(text):
 # calculates an index-key and adds the entry to the dictionary
 # multiple translations and annotated terms are stored in one entry
 # INDEX: term
-#	term: [trans1, trans2, tras3]
+#       term: [trans1, trans2, tras3]
 #   term (umgs.) : [trans4]
 
 def addEntry(word, definition):
-	global dictionary;
-	
-	# normalization
-	# prepare index string // remove all kinds of additional descriptions
-	index = word
-	if index.startswith("to "): index =  index[3:] # strip (to)
-	index = re.sub('(\([^)]+\))', r'',index)
-	index = re.sub('(\{[^}]+\})', r'',index)
-	index = re.sub('(\[[^]]+\])', r'',index)
-	index = re.sub('  ', r' ', index) # remove
-	index = index.strip()   # .lower()
-	index = index.lower()
-	if index.endswith("-"): index = index[:-1]
+        global dictionary;
 
-	# nothing left to be used as an index (e.g. entries like sayings) 
-	if len(index)<1:
-		raise NameError
+        # normalization
+        # prepare index string // remove all kinds of additional descriptions
+        index = word
+        if index.startswith("to "): index =  index[3:] # strip (to)
+        index = re.sub('(\([^)]+\))', r'',index)
+        index = re.sub('(\{[^}]+\})', r'',index)
+        index = re.sub('(\[[^]]+\])', r'',index)
+        index = re.sub('noun', r'', index)
+        index = re.sub('adj', r'', index)
+        index = re.sub('verb', r'', index)
+        index = re.sub(r'\t', r' ', index) # remove
+        index = re.sub('  ', r' ', index) # remove
+        index = index.strip()   # .lower()
+        index = index.lower()
+        if index.endswith("-"): index = index[:-1]
 
-	# get entry from dictionary	
-	if dictionary.has_key(index):
-		entry = dictionary[index]
-	else:
-		entry = {}      # not found? create new entry
+        # nothing left to be used as an index (e.g. entries like sayings)
+        if len(index)<1:
+                raise NameError
 
-	# add translation to entry 
-	if entry.has_key(word):
-		entry[word].append(definition)
-	else:
-		entry[word]=[definition]
+        # get entry from dictionary
+        if dictionary.has_key(index):
+                entry = dictionary[index]
+        else:
+                entry = {}      # not found? create new entry
 
-	# store entry in dictionary
-	dictionary[index] = entry;
+        # add translation to entry
+        if entry.has_key(word):
+                entry[word].append(definition)
+        else:
+                entry[word]=[definition]
+
+        print "index: %s, entry: %s" % (index, entry)
+        # store entry in dictionary
+        dictionary[index] = entry;
 
 
 #
@@ -243,7 +246,7 @@ def readVocabulary(filename):
             if(arguments.generatesubset):
                 if(lines>3000):
                     break
-            # trow away comments or empty lines
+            # throw away comments or empty lines
             if (line[0]=="#") or (len(line)<=2):
                 comments=comments+1
                 continue
@@ -258,7 +261,7 @@ def readVocabulary(filename):
             line = line.replace("<","&lt;")
             line = line.replace(">","&gt;")
 
-            # split entry into english and german part 
+            # split entry into english and german part
             data = line.split("\t", 1);
             if len(data)!=2:
                 errors = errors+1
@@ -269,6 +272,9 @@ def readVocabulary(filename):
             left = data[0].strip();
             right = data[1].strip();
 
+            #remove word type if present
+            left = re.sub(r'\t.*', r'', left)
+            right = re.sub(r'\t.*', r'', right)
 
             # fix quotes
 #           left  = re.sub('"([^"]+)"',r'„\1“'.decode("utf-8"), left)  # dt. anführungsstriche
@@ -282,13 +288,13 @@ def readVocabulary(filename):
             # ok... add to dictionary
             try:
                 addEntry(left, right);
-            except:
+            except Exception, e:
                 if arguments.debug:
                     print "addEntry('%s', '%s') failed!" % (left, right)
                 errors =  errors+1
             try:
                 addEntry(right, left);
-            except:
+            except Exception, e:
                 if arguments.debug:
                     print "addEntry('%s', '%s') failed!" % (right, left)
                 errors =  errors+1
@@ -297,7 +303,7 @@ def readVocabulary(filename):
         print("")
         print("  Read %s lines with %s comments. Errors: %s" % ( lines, comments, errors) )
         print("  %s unique pages in dictionary (probably)." % len(dictionary))
-        
+
         return True
 
 
@@ -305,7 +311,7 @@ def readVocabulary(filename):
 #  generate a search query url for the current entry
 #  TODO - convert title to a valid url
 #  spaces -> "+"
-#  überholen -> s=%FCberholen 
+#  überholen -> s=%FCberholen
 def generateSearchQuery(title):
     global arguments
 #    encodedTitle = urllib.quote_plus(title.encode('cp1252'))
@@ -317,25 +323,25 @@ def generateSearchQuery(title):
 # to download -> { to download, download }
 def generateIndexEntries(entry):
     def fix(text):
-        text = re.sub('  ', r' ', text) # remove dublicate spaces
+        text = re.sub('  ', r' ', text) # remove duplicate spaces
         text = text.strip()
         return text
- 
-    # create empty set and add several keys 
+
+    # create empty set and add several keys
     indexKeys = []
     variants = []
 
     # make a copy...
     text = entry
-    
+
     # remove  additional descriptions
     text = re.sub('(\{[^}]+\})', r'',text)
     text = re.sub('(\[[^]]+\])', r'',text)
-    
+
     # remove info "(ganz) gewöhnlich" => "gewöhnlich"
     reducedText = re.sub('(\([^)]+\))', r'',text)
     variants.append(reducedText)
-    
+
     # if something was changed add alternative: "(info) blupp -> info blupp" (without braces)
     if (reducedText != text):
         extendedText = re.sub('\(([^)]+)\)', r'\g<1>', text)
@@ -358,46 +364,46 @@ def renderEntry(ID, index):
     global dictionary
     global statistics
     entry = dictionary[index]
-    
+
     # unique entry id
     ID = str(ID)
-    
+
     # duh. that's a bit to simple
     # TODO
     title = index;
 
-    
     # generate a set of index keys for this entry
     indexKeys = []
     for term in entry.keys():
-        indexKeys.extend(generateIndexEntries(term)) 
-    
-    # throw out dublicate entries
+        indexKeys.extend(generateIndexEntries(term))
+
+    # throw out duplicate entries
     indexKeys = set(indexKeys)
-    
+
     #print 'Index keys generated for "'+title+'":'
     #for indexKey in indexKeys:
-    #   print '  ' + indexKey   
+    #   print '  ' + indexKey
 
     #
-    # CREATE HTML ENTRY 
+    # CREATE HTML ENTRY
     #
-    
+
     # start with title
     s = '<d:entry id="' + ID + '" d:title="' + title +'" >\n'
     statistics['entries']+=1
 
-    # add generated inddexKeys
+    # add generated indexKeys
     for indexKey in indexKeys:
-        statistics['indexkeys']+=1
-        s+= '<d:index d:value="' + indexKey +'"/>'
+        if(indexKey):
+            statistics['indexkeys']+=1
+            s+= '<d:index d:value="' + indexKey +'"/>'
 
     # loop through several spellings
     for term in entry.keys():
         statistics['variants']+=1
 
         sub ='<h1>'+style(term)+'</h1>'
-        
+
         sub+="<ul>"
         for element in entry[term]:
             statistics['elements']+=1
@@ -405,20 +411,19 @@ def renderEntry(ID, index):
         sub+="</ul>"
 
         s+=sub
-        
+
     # add a footer
     s+='<div id="f">'
-    
+
     # URL for online query
-#    s+='on <a href="'+generateSearchQuery(title)+'">dict.cc</a>'   
+    s+='on <a href="'+generateSearchQuery(title)+'">dict.cc</a>'
+#    s+='<a href="'+generateSearchQuery(title)+'">lookup online</a>'
 
-    s+='<a href="'+generateSearchQuery(title)+'">lookup online</a>'   
-
-    s+=' | <a href="x-dictionary:r:front_back_matter">About</a>'
+#    s+=' | <a href="x-dictionary:r:front_back_matter">About</a>'
     # check version link
 #    s+=' | <a href="'+checkVersionURL+'">Update?</a> '
     s+='</div>'
-    
+
     s+='</d:entry>\n\n'
 
     return s
@@ -436,10 +441,10 @@ def generateXML(filename):
     # XML Header
     output.write(u'''<?xml version="1.0" encoding="UTF-8"?>
 <d:dictionary xmlns="http://www.w3.org/1999/xhtml" xmlns:d="http://www.apple.com/DTDs/DictionaryService-1.0.rng">\n''')
-  
-  
+
+
     # Primitive Update-Funktionalität
-    #  - link, der auf mini-update-seite springt 
+    #  - link, der auf mini-update-seite springt
 
     checkUpdateURL = 'http://tools.lipflip.org/dict.cc/update.php?date='+creationDate+'&amp;lang='+arguments.shortname
 
@@ -447,20 +452,20 @@ def generateXML(filename):
     count = 0
     for term in dictionary.keys():
         count = count + 1
-        output.write(renderEntry(count, term))       
+        output.write(renderEntry(count, term))
     # front matter
     if arguments.debug:
-        print "  Vordere/hintere seiten anlegen..."
+        print "  Create front/back pages..."
 
 #<d:index d:value="Vorwort (dict.cc-plugin)"/>
 #<d:index d:value="Lizenz (dict.cc-plugin)"/>
 #<d:index d:value="Copyright (dict.cc-plugin)"/>
 #<d:index d:value="dict.cc"/>
 #<d:index d:value="update (dict.cc-Plugin)"/>
-    
+
 #    u = unicode('abcü', 'iso-8859-1')
 #    encodedlongname = "%s".encode('iso-8859-1') % u
-    
+
     output.write(u'''
 <d:entry id="front_back_matter" d:title="Vorwort">
 
@@ -497,7 +502,7 @@ Sämtliche Aspekte bezüglich der Übersetzungsdaten von dict.cc, die in diesen 
 
     if(arguments.debug):
         print("  Closing dictionary xml...")
-    
+
     # Finish up
     output.write(u'''</d:dictionary>\n''');
     output.close
@@ -510,4 +515,4 @@ Sämtliche Aspekte bezüglich der Übersetzungsdaten von dict.cc, die in diesen 
 
 if __name__ == "__main__":
     main(sys.argv[1:])
-    
+
